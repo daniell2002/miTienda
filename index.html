@@ -5,12 +5,15 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SportZone – Tienda Deportiva</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Bebas+Neue&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
 
     <!-- ===== NAVBAR ===== -->
-    <nav id="navbar" class="navbar sz-hidden">
+    <nav id="navbar" class="navbar">
       <div class="nav-brand">
         <span class="logo-bolt">⚡</span>
         <span>SportZone</span>
@@ -20,94 +23,38 @@
         <a href="#" id="nav-admin" class="nav-link sz-hidden">⚙️ Admin</a>
       </div>
       <div class="nav-right">
-        <button id="btn-coupons"  class="btn-icon-bar">🎫 Cupones</button>
-        <button id="btn-roulette" class="btn-icon-bar">🎡 Ruleta</button>
-        <span id="nav-username"  class="nav-user"></span>
-        <button id="btn-logout"  class="btn-logout">Salir</button>
+        <!-- Con sesión activa -->
+        <div id="nav-logged-in" class="nav-user-area sz-hidden">
+          <button id="btn-coupons"  class="btn-icon-bar">🎫 Cupones</button>
+          <button id="btn-roulette" class="btn-icon-bar">🎡 Ruleta</button>
+          <span id="nav-username"   class="nav-user"></span>
+          <button id="btn-logout"   class="btn-logout">Salir</button>
+        </div>
+        <!-- Sin sesión -->
+        <div id="nav-logged-out" class="nav-auth-btns">
+          <button id="btn-open-login"    class="btn-nav-login">Iniciar Sesión</button>
+          <button id="btn-open-register" class="btn-nav-register">Registrarse</button>
+        </div>
       </div>
     </nav>
 
-    <!-- ===== AUTH PAGE ===== -->
-    <div id="page-auth" class="page">
-      <div class="auth-layout">
+    <!-- ===== STORE PAGE ===== -->
+    <div id="page-store" class="page">
 
-        <!-- Hero -->
-        <div class="auth-hero">
-          <div class="hero-glow"></div>
-          <div class="hero-text">
-            <span class="hero-bolt">⚡</span>
-            <h1>SportZone</h1>
-            <p>Tu tienda deportiva de élite</p>
-            <ul class="hero-features">
-              <li>🏋️ Equipamiento profesional</li>
-              <li>🚴 Las mejores marcas</li>
-              <li>🎡 Premios y descuentos exclusivos</li>
-            </ul>
+      <!-- Hero para visitantes sin sesión -->
+      <div id="store-hero-guest" class="store-hero-guest">
+        <div class="shg-content">
+          <div class="shg-text">
+            <h2>Tu tienda deportiva de <span class="hero-accent">élite</span></h2>
+            <p>Equipamiento profesional · Las mejores marcas · Precios en COP</p>
+          </div>
+          <div class="shg-actions">
+            <div class="shg-promo">🎡 <strong>¡Regístrate y recibe 3 giros gratis!</strong></div>
+            <button id="btn-hero-register" class="btn-nav-register">🎁 Crear Cuenta</button>
           </div>
         </div>
-
-        <!-- Form panel -->
-        <div class="auth-panel">
-          <div class="auth-tabs">
-            <button class="tab-btn active" data-tab="login">Iniciar Sesión</button>
-            <button class="tab-btn" data-tab="register">Registrarse</button>
-          </div>
-
-          <!-- LOGIN -->
-          <div id="tab-login" class="tab-pane active">
-            <form id="form-login" novalidate>
-              <div class="fg">
-                <label>Email</label>
-                <input id="login-email" type="email" placeholder="tu@email.com" autocomplete="email" required />
-              </div>
-              <div class="fg">
-                <label>Contraseña</label>
-                <input id="login-password" type="password" placeholder="••••••••" autocomplete="current-password" required />
-              </div>
-              <button type="submit" class="btn-primary w100">Entrar →</button>
-              <p id="login-error" class="msg-error sz-hidden"></p>
-            </form>
-            <div class="auth-hint">
-              💡 Admin demo: <strong>admin@sport.com</strong> / <strong>admin123</strong>
-            </div>
-          </div>
-
-          <!-- REGISTER -->
-          <div id="tab-register" class="tab-pane sz-hidden">
-            <form id="form-register" novalidate>
-              <div class="fg">
-                <label>Nombre completo</label>
-                <input id="reg-name" type="text" placeholder="Tu nombre" required />
-              </div>
-              <div class="fg">
-                <label>Email</label>
-                <input id="reg-email" type="email" placeholder="tu@email.com" autocomplete="email" required />
-              </div>
-              <div class="fg">
-                <label>Contraseña</label>
-                <input id="reg-password" type="password" placeholder="Mínimo 6 caracteres" minlength="6" required />
-              </div>
-              <div class="fg">
-                <label>Confirmar contraseña</label>
-                <input id="reg-confirm" type="password" placeholder="Repite tu contraseña" required />
-              </div>
-              <button type="submit" class="btn-primary w100">Crear Cuenta →</button>
-              <p id="register-error" class="msg-error sz-hidden"></p>
-            </form>
-            <div class="register-bonus">
-              <span>🎡</span>
-              <div>
-                <strong>¡Recibe 3 giros de ruleta!</strong>
-                <p>Con descuentos y premios al registrarte</p>
-              </div>
-            </div>
-          </div>
-        </div><!-- /auth-panel -->
       </div>
-    </div><!-- /page-auth -->
 
-    <!-- ===== STORE PAGE ===== -->
-    <div id="page-store" class="page sz-hidden">
       <div class="store-banner">
         <h2>🏆 Los Mejores Productos Deportivos</h2>
         <p>Equipamiento de élite para atletas de élite</p>
@@ -195,6 +142,82 @@
         <div class="admin-card">
           <h3>👥 Usuarios Registrados (<span id="user-count">0</span>)</h3>
           <div id="admin-user-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== MODAL: AUTH (Iniciar Sesión / Registro) ===== -->
+    <div id="modal-auth" class="modal sz-hidden">
+      <div class="modal-box auth-modal-box">
+        <button class="modal-close" id="close-auth">✕</button>
+        <div class="auth-modal-brand">
+          <span class="logo-bolt">⚡</span>
+          <span>SportZone</span>
+        </div>
+        <div class="auth-tabs">
+          <button class="tab-btn active" data-tab="login">Iniciar Sesión</button>
+          <button class="tab-btn" data-tab="register">Registrarse</button>
+        </div>
+
+        <!-- LOGIN -->
+        <div id="tab-login" class="tab-pane active">
+          <form id="form-login" novalidate>
+            <div class="fg">
+              <label>Email</label>
+              <input id="login-email" type="email" placeholder="tu@email.com" autocomplete="email" required />
+            </div>
+            <div class="fg">
+              <label>Contraseña</label>
+              <input id="login-password" type="password" placeholder="••••••••" autocomplete="current-password" required />
+            </div>
+            <button type="submit" class="btn-primary w100">Entrar →</button>
+            <p id="login-error" class="msg-error sz-hidden"></p>
+          </form>
+          <div class="auth-hint">
+            💡 Admin demo: <strong>admin@sport.com</strong> / <strong>admin123</strong>
+          </div>
+        </div>
+
+        <!-- REGISTER -->
+        <div id="tab-register" class="tab-pane sz-hidden">
+          <div class="reg-promo">
+            <div class="reg-promo-head">
+              <span class="reg-promo-ico">🎡</span>
+              <div>
+                <span class="reg-promo-chip">GRATIS al registrarte</span>
+                <strong>¡3 Giros de Ruleta!</strong>
+                <p>Gana cupones con descuentos reales en cada giro</p>
+              </div>
+            </div>
+            <div class="reg-promo-prizes">
+              <span>🏷️ 10% OFF</span>
+              <span>🔥 20% OFF</span>
+              <span>⚡ 30% OFF</span>
+              <span>💥 50% OFF</span>
+              <span>🚚 Envío gratis</span>
+              <span>💧 Regalo</span>
+            </div>
+          </div>
+          <form id="form-register" novalidate>
+            <div class="fg">
+              <label>Nombre completo</label>
+              <input id="reg-name" type="text" placeholder="Tu nombre" required />
+            </div>
+            <div class="fg">
+              <label>Email</label>
+              <input id="reg-email" type="email" placeholder="tu@email.com" autocomplete="email" required />
+            </div>
+            <div class="fg">
+              <label>Contraseña</label>
+              <input id="reg-password" type="password" placeholder="Mínimo 6 caracteres" minlength="6" required />
+            </div>
+            <div class="fg">
+              <label>Confirmar contraseña</label>
+              <input id="reg-confirm" type="password" placeholder="Repite tu contraseña" required />
+            </div>
+            <button type="submit" class="btn-primary w100 btn-register-cta">🎁 Crear Cuenta y Recibir Giros →</button>
+            <p id="register-error" class="msg-error sz-hidden"></p>
+          </form>
         </div>
       </div>
     </div>

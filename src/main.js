@@ -1,16 +1,20 @@
 // ============================================================
-//  SportZone — Tienda Deportiva | main.js
+//  SportZone — Tienda Deportiva | main.js  (MySQL API Edition)
 // ============================================================
 import './style.css';
 
-// ── State ──────────────────────────────────────────────────
-let currentUser = null;
-let activeCat   = 'all';
-let searchTerm  = '';
-let spinning    = false;
-let wheelAngle  = 0;
+// ── Config ──────────────────────────────────────────────────
+const API = 'http://localhost:3000/api';
 
-// ── Prizes ─────────────────────────────────────────────────
+// ── State ───────────────────────────────────────────────────
+let currentUser    = null;   // { id, nombre, email, rol, giros }
+let activeCat      = 'all';
+let searchTerm     = '';
+let spinning       = false;
+let wheelAngle     = 0;
+let cachedProducts = [];     // cache local para filtrar sin re-fetch
+
+// ── Premios ruleta ───────────────────────────────────────────
 const PRIZES = [
   { label:'10% OFF',    icon:'🏷',  color:'#FF3D00', desc:'10% de descuento en tu proxima compra' },
   { label:'ENVIO FREE', icon:'🚚', color:'#00C853', desc:'Envio gratis en tu proxima compra'      },
@@ -22,150 +26,180 @@ const PRIZES = [
   { label:'5% OFF',     icon:'🎯', color:'#607D8B', desc:'5% de descuento en tu proxima compra'  },
 ];
 
-// ── Formato moneda COP ──────────────────────────────────────
-const fmt = v => '$ ' + Math.round(v).toLocaleString('es-CO');
+// ── Helpers globales ─────────────────────────────────────────
+const fmt       = v => '$ ' + Math.round(parseFloat(v) || 0).toLocaleString('es-CO');
+const CAT_LABEL = { running:'Running', gym:'Gym & Fitness', futbol:'Futbol', natacion:'Natacion', ciclismo:'Ciclismo', otros:'Otros' };
+const CAT_EMOJI = { running:'👟', gym:'💪', futbol:'⚽', natacion:'🏊', ciclismo:'🚴', otros:'🏅' };
+const SEG       = (2 * Math.PI) / PRIZES.length;
+const byId      = id => document.getElementById(id);
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                       .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+function showErr(el, msg) { el.textContent = msg; el.classList.remove('sz-hidden'); }
 
-// ── Storage ─────────────────────────────────────────────────
-const DATA_VERSION = 'v2-cop';
-const K = { users:'sz_users', products:'sz_products', session:'sz_sess', ver:'sz_ver' };
-const store = {
-  get: k      => JSON.parse(localStorage.getItem(k) || 'null'),
-  set: (k, v) => localStorage.setItem(k, JSON.stringify(v)),
-  del: k      => localStorage.removeItem(k),
-};
-const getUsers    = ()  => store.get(K.users)    || [];
-const saveUsers   = u   => store.set(K.users, u);
-const getProducts = ()  => store.get(K.products) || [];
-const saveProducts= p   => store.set(K.products, p);
+// ── Sesión localStorage (solo el objeto usuario) ─────────────
+const SK           = 'sz_session';
+const saveSession  = u  => localStorage.setItem(SK, JSON.stringify(u));
+const loadSession  = () => JSON.parse(localStorage.getItem(SK) || 'null');
+const clearSession = () => localStorage.removeItem(SK);
 
-// ── Boot ────────────────────────────────────────────────────
-function init() { seedData(); bindEvents(); checkSession(); }
+// ── API helpers ──────────────────────────────────────────────
+async function apiFetch(method, path, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  let r;
+  try { r = await fetch(API + path, opts); }
+  catch { throw new Error('Sin conexión con el servidor. Inicia el API con: cd api && node server.js'); }
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error || `Error ${r.status}`);
+  return data;
+}
+const apiGet  = path      => apiFetch('GET',    path);
+const apiPost = (path, b) => apiFetch('POST',   path, b);
+const apiDel  = path      => apiFetch('DELETE', path);
 
-function seedData() {
-  // Si la versión de datos cambió, resetear productos para aplicar precios COP
-  if (store.get(K.ver) !== DATA_VERSION) {
-    store.del(K.products);
-    store.set(K.ver, DATA_VERSION);
-  }
-  const users = getUsers();
-  if (!users.find(u => u.email === 'admin@sport.com')) {
-    users.push({ id:'admin-001', name:'Administrador', email:'admin@sport.com', password:'admin123',
-      role:'admin', spins:0, coupons:[], createdAt: new Date().toISOString() });
-    saveUsers(users);
-  }
-  if (!getProducts().length) {
-    saveProducts([
-      { id:'p1', name:'Zapatillas Running Pro X',   category:'running',  price:549900,  stock:15, desc:'Suela amortiguada y transpirable para corredores exigentes.',     image:null, emoji:'👟' },
-      { id:'p2', name:'Camiseta Tecnica AeroFit',   category:'gym',      price:149900,  stock:30, desc:'Tejido tecnico que elimina el sudor, ideal para entrenamientos.',  image:null, emoji:'👕' },
-      { id:'p3', name:'Balon de Futbol Premier',    category:'futbol',   price:199900,  stock:20, desc:'Balon oficial de competicion talla 5. Alta durabilidad.',          image:null, emoji:'⚽' },
-      { id:'p4', name:'Gafas de Natacion Elite',    category:'natacion', price:99900,   stock:25, desc:'Antivaho con lentes espejo y correa ajustable.',                   image:null, emoji:'🥽' },
-      { id:'p5', name:'Casco Ciclismo AeroShield',  category:'ciclismo', price:379900,  stock:10, desc:'Certificado CE EN1078. Ventilacion optima, ligero y resistente.',  image:null, emoji:'🪖' },
-      { id:'p6', name:'Mancuernas Ajustables 30kg', category:'gym',      price:679900,  stock:8,  desc:'Set de 5 a 30 kg con sistema de ajuste rapido.',                   image:null, emoji:'🏋' },
-      { id:'p7', name:'Short Compresion Pro',        category:'running',  price:189900,  stock:22, desc:'Bolsillos laterales y secado ultrarapido.',                       image:null, emoji:'🩳' },
-      { id:'p8', name:'Raqueta Padel Carbon X',      category:'otros',    price:849900,  stock:6,  desc:'Fibra de carbono. Maximo control y potencia.',                    image:null, emoji:'🏓' },
-    ]);
+// ── Boot ─────────────────────────────────────────────────────
+async function init() {
+  bindEvents();
+  const sess = loadSession();
+  if (sess) {
+    currentUser = sess;
+    updateNavbar();
+    if (currentUser.rol === 'admin') { await showAdmin(); }
+    else { await showStore(); }
+  } else {
+    updateNavbar();
+    await loadAndRenderProducts();
   }
 }
 
-// ── Session ──────────────────────────────────────────────────
-function checkSession() {
-  const sess = store.get(K.session);
-  if (sess) { const u = getUsers().find(x => x.id === sess.id); if (u) { currentUser = u; showApp(); return; } }
-  showAuth();
+function showAuth(tab = 'login') {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p => { p.classList.remove('active'); p.classList.add('sz-hidden'); });
+  const btn  = document.querySelector(`.tab-btn[data-tab="${tab}"]`);
+  const pane = byId('tab-' + tab);
+  if (btn)  btn.classList.add('active');
+  if (pane) { pane.classList.remove('sz-hidden'); pane.classList.add('active'); }
+  byId('modal-auth').classList.remove('sz-hidden');
 }
 
-function showAuth() {
-  byId('page-auth').classList.remove('sz-hidden');
-  byId('page-store').classList.add('sz-hidden');
-  byId('page-admin').classList.add('sz-hidden');
-  byId('navbar').classList.add('sz-hidden');
-  currentUser = null;
+async function showApp() {
+  byId('modal-auth').classList.add('sz-hidden');
+  updateNavbar();
+  if (currentUser.rol === 'admin') { await showAdmin(); }
+  else { await showStore(); }
 }
 
-function showApp() {
-  byId('page-auth').classList.add('sz-hidden');
-  byId('navbar').classList.remove('sz-hidden');
-  byId('nav-username').textContent = '👤 ' + currentUser.name;
-  const al = byId('nav-admin');
-  currentUser.role === 'admin' ? al.classList.remove('sz-hidden') : al.classList.add('sz-hidden');
-  showStore();
+function updateNavbar() {
+  if (currentUser) {
+    byId('nav-username').textContent = '👤 ' + currentUser.nombre;
+    byId('nav-logged-in').classList.remove('sz-hidden');
+    byId('nav-logged-out').classList.add('sz-hidden');
+    currentUser.rol === 'admin'
+      ? byId('nav-admin').classList.remove('sz-hidden')
+      : byId('nav-admin').classList.add('sz-hidden');
+    byId('store-hero-guest').classList.add('sz-hidden');
+  } else {
+    byId('nav-logged-in').classList.add('sz-hidden');
+    byId('nav-logged-out').classList.remove('sz-hidden');
+    byId('nav-admin').classList.add('sz-hidden');
+    byId('store-hero-guest').classList.remove('sz-hidden');
+  }
 }
 
 // ── Auth ─────────────────────────────────────────────────────
-function handleLogin(e) {
+async function handleLogin(e) {
   e.preventDefault();
   const email = byId('login-email').value.trim().toLowerCase();
   const pass  = byId('login-password').value;
   const errEl = byId('login-error');
-  const user  = getUsers().find(u => u.email === email && u.password === pass);
-  if (!user) { showErr(errEl, 'Email o contrasena incorrectos.'); return; }
-  errEl.classList.add('sz-hidden');
-  currentUser = user;
-  store.set(K.session, { id: user.id });
-  showApp();
+  try {
+    const user = await apiPost('/login', { email, password: pass });
+    errEl.classList.add('sz-hidden');
+    currentUser = user;
+    saveSession(user);
+    await showApp();
+  } catch(err) { showErr(errEl, err.message); }
 }
 
-function handleRegister(e) {
+async function handleRegister(e) {
   e.preventDefault();
   const name  = byId('reg-name').value.trim();
   const email = byId('reg-email').value.trim().toLowerCase();
   const pass  = byId('reg-password').value;
   const conf  = byId('reg-confirm').value;
   const errEl = byId('register-error');
-  if (pass !== conf)   { showErr(errEl, 'Las contrasenas no coinciden.'); return; }
-  if (pass.length < 6) { showErr(errEl, 'La contrasena debe tener al menos 6 caracteres.'); return; }
-  const users = getUsers();
-  if (users.find(u => u.email === email)) { showErr(errEl, 'Ya existe una cuenta con ese email.'); return; }
-  const newUser = { id:'user-'+Date.now(), name, email, password:pass, role:'user', spins:3, coupons:[], createdAt:new Date().toISOString() };
-  users.push(newUser); saveUsers(users);
-  currentUser = newUser;
-  store.set(K.session, { id: newUser.id });
-  errEl.classList.add('sz-hidden');
-  showApp();
-  showWelcome(name);
+  if (pass !== conf)   { showErr(errEl, 'Las contraseñas no coinciden.'); return; }
+  if (pass.length < 6) { showErr(errEl, 'La contraseña debe tener al menos 6 caracteres.'); return; }
+  try {
+    const user = await apiPost('/registro', { nombre: name, email, password: pass });
+    errEl.classList.add('sz-hidden');
+    currentUser = user;
+    saveSession(user);
+    await showApp();
+    showWelcome(name);
+  } catch(err) { showErr(errEl, err.message); }
 }
 
 function handleLogout() {
-  store.del(K.session); currentUser = null;
+  clearSession(); currentUser = null;
   byId('form-login').reset(); byId('form-register').reset();
   byId('login-error').classList.add('sz-hidden');
   byId('register-error').classList.add('sz-hidden');
-  showAuth();
+  byId('page-admin').classList.add('sz-hidden');
+  byId('page-store').classList.remove('sz-hidden');
+  byId('nav-store').classList.add('active');
+  byId('nav-admin').classList.remove('active');
+  updateNavbar();
 }
 
 // ── Nav ───────────────────────────────────────────────────────
-function showStore() {
+async function showStore() {
   byId('page-store').classList.remove('sz-hidden'); byId('page-admin').classList.add('sz-hidden');
   byId('nav-store').classList.add('active');        byId('nav-admin').classList.remove('active');
-  renderProducts();
+  await loadAndRenderProducts();
 }
-function showAdmin() {
-  if (currentUser?.role !== 'admin') return;
+async function showAdmin() {
+  if (currentUser?.rol !== 'admin') return;
   byId('page-store').classList.add('sz-hidden'); byId('page-admin').classList.remove('sz-hidden');
   byId('nav-store').classList.remove('active');  byId('nav-admin').classList.add('active');
-  renderAdminProducts(); renderAdminUsers();
+  await Promise.all([renderAdminProducts(), renderAdminUsers()]);
 }
 
 // ── Store ────────────────────────────────────────────────────
-const CAT_LABEL = { running:'Running', gym:'Gym & Fitness', futbol:'Futbol', natacion:'Natacion', ciclismo:'Ciclismo', otros:'Otros' };
-const CAT_EMOJI = { running:'👟', gym:'💪', futbol:'⚽', natacion:'🏊', ciclismo:'🚴', otros:'🏅' };
+async function loadAndRenderProducts() {
+  const grid = byId('products-grid');
+  grid.innerHTML = '<div class="empty-state"><span>⏳</span><h3>Cargando productos...</h3></div>';
+  try {
+    cachedProducts = await apiGet('/productos');
+    renderProducts();
+  } catch(err) {
+    grid.innerHTML = `<div class="empty-state">
+      <span>⚠️</span><h3>Sin conexión con el servidor</h3>
+      <p>${err.message}</p>
+      <p style="font-size:.78rem;margin-top:8px;color:var(--muted)">
+        Ejecuta en otra terminal:<br><code style="color:var(--acc)">cd api &amp;&amp; npm install &amp;&amp; node server.js</code>
+      </p></div>`;
+  }
+}
 
 function renderProducts() {
   const grid = byId('products-grid');
-  let list = getProducts();
-  if (activeCat !== 'all') list = list.filter(p => p.category === activeCat);
-  if (searchTerm) { const q = searchTerm.toLowerCase(); list = list.filter(p => p.name.toLowerCase().includes(q) || (p.desc||'').toLowerCase().includes(q) || p.category.toLowerCase().includes(q)); }
+  let list = cachedProducts;
+  if (activeCat !== 'all') list = list.filter(p => p.categoria === activeCat);
+  if (searchTerm) { const q = searchTerm.toLowerCase(); list = list.filter(p => p.nombre.toLowerCase().includes(q) || (p.descripcion||'').toLowerCase().includes(q) || p.categoria.toLowerCase().includes(q)); }
   if (!list.length) { grid.innerHTML = '<div class="empty-state"><span>🔍</span><h3>Sin resultados</h3><p>Prueba otra busqueda o categoria</p></div>'; return; }
   grid.innerHTML = list.map((p,i) => `
     <div class="product-card" style="animation-delay:${i*0.05}s">
-      <div class="prod-thumb">${p.image?`<img src="${p.image}" alt="${esc(p.name)}" loading="lazy">`:`<span>${p.emoji||CAT_EMOJI[p.category]||'🏆'}</span>`}</div>
+      <div class="prod-thumb">${p.imagen?`<img src="${p.imagen}" alt="${esc(p.nombre)}" loading="lazy">`:`<span>${p.emoji||CAT_EMOJI[p.categoria]||'🏆'}</span>`}</div>
       <div class="prod-body">
-        <div class="prod-cat">${CAT_LABEL[p.category]||p.category}</div>
-        <h3 class="prod-name">${esc(p.name)}</h3>
-        ${p.desc?`<p class="prod-desc">${esc(p.desc)}</p>`:''}
+        <div class="prod-cat">${CAT_LABEL[p.categoria]||p.categoria}</div>
+        <h3 class="prod-name">${esc(p.nombre)}</h3>
+        ${p.descripcion?`<p class="prod-desc">${esc(p.descripcion)}</p>`:''}
         <div class="prod-foot">
           <div>
-            <div class="prod-price">${fmt(p.price)}</div>
+            <div class="prod-price">${fmt(p.precio)}</div>
             <div class="prod-stock ${p.stock===0?'stock-out':p.stock<=5?'stock-low':''}">${p.stock===0?'✗ Agotado':p.stock<=5?`⚠ Solo ${p.stock}`:'✓ En stock'}</div>
           </div>
           <button class="btn-cart" ${p.stock===0?'disabled':''} data-id="${p.id}">${p.stock===0?'Agotado':'+ Carrito'}</button>
@@ -178,59 +212,67 @@ function renderProducts() {
 function handleCartClick(e) {
   const btn = e.target.closest('.btn-cart');
   if (!btn || btn.disabled) return;
-  const prod = getProducts().find(p => p.id === btn.dataset.id);
-  if (prod) toast('🛒 ' + esc(prod.name) + ' agregado al carrito');
+  const prod = cachedProducts.find(p => String(p.id) === btn.dataset.id);
+  if (prod) toast('🛒 ' + esc(prod.nombre) + ' agregado al carrito');
 }
 
 // ── Admin products ───────────────────────────────────────────
-function handleProductSubmit(e) {
+async function handleProductSubmit(e) {
   e.preventDefault();
-  const name  = byId('prod-name').value.trim();
-  const cat   = byId('prod-category').value;
-  const price = parseFloat(byId('prod-price').value);
-  const stock = parseInt(byId('prod-stock').value, 10);
-  const desc  = byId('prod-desc').value.trim();
-  const prev  = byId('img-preview');
-  const image = prev.classList.contains('sz-hidden') ? null : prev.src;
-  const product = { id:'p'+Date.now(), name, category:cat, price, stock, desc, image, emoji:CAT_EMOJI[cat]||'🏅', createdAt:new Date().toISOString() };
-  const products = getProducts(); products.unshift(product); saveProducts(products);
-  e.target.reset(); prev.classList.add('sz-hidden'); byId('upload-ph').classList.remove('sz-hidden');
-  const ok = byId('prod-ok'); ok.classList.remove('sz-hidden'); setTimeout(()=>ok.classList.add('sz-hidden'),3000);
-  renderAdminProducts(); toast('✅ Producto publicado correctamente');
+  const nombre      = byId('prod-name').value.trim();
+  const categoria   = byId('prod-category').value;
+  const precio      = parseFloat(byId('prod-price').value);
+  const stock       = parseInt(byId('prod-stock').value, 10);
+  const descripcion = byId('prod-desc').value.trim();
+  const prev        = byId('img-preview');
+  const imagen      = prev.classList.contains('sz-hidden') ? null : prev.src;
+  const emoji       = CAT_EMOJI[categoria] || '🏅';
+  try {
+    await apiPost('/productos', { nombre, categoria, precio, stock, descripcion, emoji, imagen });
+    e.target.reset(); prev.classList.add('sz-hidden'); byId('upload-ph').classList.remove('sz-hidden');
+    const ok = byId('prod-ok'); ok.classList.remove('sz-hidden'); setTimeout(()=>ok.classList.add('sz-hidden'),3000);
+    await renderAdminProducts(); toast('✅ Producto publicado correctamente');
+  } catch(err) { toast('❌ ' + err.message, 'error'); }
 }
 
-function renderAdminProducts() {
-  const products = getProducts();
-  byId('prod-count').textContent = products.length;
-  const list = byId('admin-prod-list');
-  if (!products.length) { list.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px">Aun no hay productos</p>'; return; }
-  list.innerHTML = products.map(p => `
-    <div class="ap-row">
-      <div class="ap-thumb">${p.image?`<img src="${p.image}" alt="">`:(p.emoji||'🏆')}</div>
-      <div class="ap-info"><h4>${esc(p.name)}</h4><p>${CAT_LABEL[p.category]||p.category} · ${fmt(p.price)} · Stock: ${p.stock}</p></div>
-      <button class="btn-del" data-id="${p.id}">🗑 Eliminar</button>
-    </div>
-  `).join('');
+async function renderAdminProducts() {
+  try {
+    const products = await apiGet('/productos');
+    byId('prod-count').textContent = products.length;
+    const list = byId('admin-prod-list');
+    if (!products.length) { list.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px">Aun no hay productos</p>'; return; }
+    list.innerHTML = products.map(p => `
+      <div class="ap-row">
+        <div class="ap-thumb">${p.imagen?`<img src="${p.imagen}" alt="">`:(p.emoji||'🏆')}</div>
+        <div class="ap-info"><h4>${esc(p.nombre)}</h4><p>${CAT_LABEL[p.categoria]||p.categoria} · ${fmt(p.precio)} · Stock: ${p.stock}</p></div>
+        <button class="btn-del" data-id="${p.id}">🗑 Eliminar</button>
+      </div>
+    `).join('');
+  } catch(err) { toast('❌ ' + err.message, 'error'); }
 }
 
-function handleAdminProdClick(e) {
+async function handleAdminProdClick(e) {
   const btn = e.target.closest('.btn-del');
   if (!btn) return;
   if (!confirm('¿Eliminar este producto permanentemente?')) return;
-  saveProducts(getProducts().filter(p => p.id !== btn.dataset.id));
-  renderAdminProducts(); toast('🗑 Producto eliminado');
+  try {
+    await apiDel('/productos/' + btn.dataset.id);
+    await renderAdminProducts(); toast('🗑 Producto eliminado');
+  } catch(err) { toast('❌ ' + err.message, 'error'); }
 }
 
-function renderAdminUsers() {
-  const users = getUsers();
-  byId('user-count').textContent = users.length;
-  byId('admin-user-list').innerHTML = users.map(u => `
-    <div class="au-row">
-      <div class="au-avatar">${u.name.charAt(0).toUpperCase()}</div>
-      <div class="au-info"><h4>${esc(u.name)}</h4><p>${esc(u.email)} · Giros: ${u.spins||0} · Cupones: ${(u.coupons||[]).length}</p></div>
-      <span class="badge ${u.role==='admin'?'badge-admin':'badge-user'}">${u.role==='admin'?'⭐ Admin':'👤 Usuario'}</span>
-    </div>
-  `).join('');
+async function renderAdminUsers() {
+  try {
+    const users = await apiGet('/usuarios');
+    byId('user-count').textContent = users.length;
+    byId('admin-user-list').innerHTML = users.map(u => `
+      <div class="au-row">
+        <div class="au-avatar">${u.nombre.charAt(0).toUpperCase()}</div>
+        <div class="au-info"><h4>${esc(u.nombre)}</h4><p>${esc(u.email)} · Giros restantes: ${u.giros||0}</p></div>
+        <span class="badge ${u.rol==='admin'?'badge-admin':'badge-user'}">${u.rol==='admin'?'⭐ Admin':'👤 Usuario'}</span>
+      </div>
+    `).join('');
+  } catch(err) { toast('❌ ' + err.message, 'error'); }
 }
 
 // ── Image upload ─────────────────────────────────────────────
@@ -244,8 +286,6 @@ function handleImageUpload(e) {
 }
 
 // ── Roulette ─────────────────────────────────────────────────
-const SEG = (2 * Math.PI) / PRIZES.length;
-
 function openRoulette() {
   byId('modal-roulette').classList.remove('sz-hidden');
   byId('prize-result').classList.add('sz-hidden');
@@ -276,7 +316,7 @@ function drawWheel(rot) {
 
 function spinWheel() {
   if (spinning) return;
-  const spins = currentUser?.spins||0;
+  const spins = currentUser?.giros || 0;
   if (spins<=0) { byId('prize-result').classList.add('sz-hidden'); byId('no-spins-msg').classList.remove('sz-hidden'); return; }
   spinning=true; byId('btn-spin').disabled=true;
   byId('prize-result').classList.add('sz-hidden'); byId('no-spins-msg').classList.add('sz-hidden');
@@ -297,35 +337,42 @@ function spinWheel() {
   })(t0);
 }
 
-function awardPrize(idx) {
+async function awardPrize(idx) {
   const prize = PRIZES[idx];
   const code  = prize.label.replace(/\s+/g,'')+'-'+Date.now().toString(36).toUpperCase();
-  const users = getUsers(); const ui = users.findIndex(u=>u.id===currentUser.id);
-  if (ui!==-1) {
-    users[ui].spins=Math.max(0,(users[ui].spins||1)-1);
-    users[ui].coupons=users[ui].coupons||[];
-    users[ui].coupons.push({ id:code, icon:prize.icon, prize:prize.label, desc:prize.desc, code, used:false, earnedAt:new Date().toISOString() });
-    saveUsers(users); currentUser=users[ui]; store.set(K.session,{id:currentUser.id});
-  }
-  byId('prize-icon').textContent=prize.icon; byId('prize-title').textContent='¡Ganaste: '+prize.label+'!'; byId('prize-code').textContent=code;
-  byId('prize-result').classList.remove('sz-hidden'); updateSpinsLabel(); toast(prize.icon+' ¡Ganaste '+prize.label+'!');
+  try {
+    const result = await apiPost('/giro', {
+      usuario_id:  currentUser.id,
+      codigo:      code,
+      premio:      prize.label,
+      icono:       prize.icon,
+      descripcion: prize.desc,
+    });
+    currentUser.giros = result.giros;
+    saveSession(currentUser);
+    byId('prize-icon').textContent=prize.icon; byId('prize-title').textContent='¡Ganaste: '+prize.label+'!'; byId('prize-code').textContent=code;
+    byId('prize-result').classList.remove('sz-hidden'); updateSpinsLabel(); toast(prize.icon+' ¡Ganaste '+prize.label+'!');
+  } catch(err) { toast('❌ ' + err.message, 'error'); spinning=false; byId('btn-spin').disabled=false; }
 }
 
-function updateSpinsLabel() { byId('spins-left').innerHTML='Giros disponibles: <strong>'+(currentUser?.spins||0)+'</strong>'; }
+function updateSpinsLabel() { byId('spins-left').innerHTML='Giros disponibles: <strong>'+(currentUser?.giros||0)+'</strong>'; }
 
 // ── Coupons ───────────────────────────────────────────────────
-function openCoupons() {
-  const coupons=currentUser?.coupons||[];
+async function openCoupons() {
   const list=byId('coupons-list');
-  if(!coupons.length) { list.innerHTML='<div class="no-coupons"><span>🎫</span><p>No tienes cupones todavia</p><p>¡Gira la ruleta para ganar premios!</p></div>'; }
-  else { list.innerHTML=[...coupons].reverse().map(c=>`
-    <div class="coupon-card ${c.used?'used':''}">
-      <span class="coupon-ico">${c.icon}</span>
-      <div class="coupon-body"><h4>${c.prize}</h4><p>${c.desc}</p>${c.used?'<div class="coupon-used-tag">✗ Cupon usado</div>':''}</div>
-      <div class="coupon-code">${c.code}</div>
-    </div>
-  `).join(''); }
+  list.innerHTML='<p style="color:var(--muted);text-align:center;padding:20px">Cargando cupones...</p>';
   byId('modal-coupons').classList.remove('sz-hidden');
+  try {
+    const coupons = await apiGet('/cupones/' + currentUser.id);
+    if(!coupons.length) { list.innerHTML='<div class="no-coupons"><span>🎫</span><p>No tienes cupones todavia</p><p>¡Gira la ruleta para ganar premios!</p></div>'; }
+    else { list.innerHTML=coupons.map(c=>`
+      <div class="coupon-card ${c.usado?'used':''}">
+        <span class="coupon-ico">${c.icono}</span>
+        <div class="coupon-body"><h4>${c.premio}</h4><p>${c.descripcion}</p>${c.usado?'<div class="coupon-used-tag">✗ Cupon usado</div>':''}</div>
+        <div class="coupon-code">${c.codigo}</div>
+      </div>
+    `).join(''); }
+  } catch(err) { list.innerHTML='<p style="color:var(--err);text-align:center;padding:20px">Error al cargar cupones</p>'; }
 }
 
 // ── Welcome ───────────────────────────────────────────────────
@@ -337,11 +384,6 @@ function toast(msg,type='success') {
   const el=byId('toast'); el.textContent=msg; el.className='toast'+(type==='error'?' error':''); el.classList.remove('sz-hidden');
   clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.add('sz-hidden'),3200);
 }
-
-// ── Helpers ───────────────────────────────────────────────────
-const byId=id=>document.getElementById(id);
-function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
-function showErr(el,msg){ el.textContent=msg; el.classList.remove('sz-hidden'); }
 
 // ── Events ────────────────────────────────────────────────────
 function bindEvents() {
@@ -372,6 +414,10 @@ function bindEvents() {
   byId('close-coupons').addEventListener('click',()=>byId('modal-coupons').classList.add('sz-hidden'));
   byId('btn-go-roulette').addEventListener('click',()=>{byId('modal-welcome').classList.add('sz-hidden');openRoulette();});
   byId('btn-skip').addEventListener('click',()=>byId('modal-welcome').classList.add('sz-hidden'));
+  byId('btn-open-login').addEventListener('click', () => showAuth('login'));
+  byId('btn-open-register').addEventListener('click', () => showAuth('register'));
+  byId('btn-hero-register').addEventListener('click', () => showAuth('register'));
+  byId('close-auth').addEventListener('click', () => byId('modal-auth').classList.add('sz-hidden'));
   document.querySelectorAll('.modal').forEach(m=>{ m.addEventListener('click',e=>{if(e.target===m)m.classList.add('sz-hidden');}); });
 }
 
