@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SportZone – Tienda Deportiva</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+
+    <!-- ===== NAVBAR ===== -->
+    <nav id="navbar" class="navbar sz-hidden">
+      <div class="nav-brand">
+        <span class="logo-bolt">⚡</span>
+        <span>SportZone</span>
+      </div>
+      <div class="nav-links">
+        <a href="#" id="nav-store" class="nav-link active">🏪 Tienda</a>
+        <a href="#" id="nav-admin" class="nav-link sz-hidden">⚙️ Admin</a>
+      </div>
+      <div class="nav-right">
+        <button id="btn-coupons"  class="btn-icon-bar">🎫 Cupones</button>
+        <button id="btn-roulette" class="btn-icon-bar">🎡 Ruleta</button>
+        <span id="nav-username"  class="nav-user"></span>
+        <button id="btn-logout"  class="btn-logout">Salir</button>
+      </div>
+    </nav>
+
+    <!-- ===== AUTH PAGE ===== -->
+    <div id="page-auth" class="page">
+      <div class="auth-layout">
+
+        <!-- Hero -->
+        <div class="auth-hero">
+          <div class="hero-glow"></div>
+          <div class="hero-text">
+            <span class="hero-bolt">⚡</span>
+            <h1>SportZone</h1>
+            <p>Tu tienda deportiva de élite</p>
+            <ul class="hero-features">
+              <li>🏋️ Equipamiento profesional</li>
+              <li>🚴 Las mejores marcas</li>
+              <li>🎡 Premios y descuentos exclusivos</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Form panel -->
+        <div class="auth-panel">
+          <div class="auth-tabs">
+            <button class="tab-btn active" data-tab="login">Iniciar Sesión</button>
+            <button class="tab-btn" data-tab="register">Registrarse</button>
+          </div>
+
+          <!-- LOGIN -->
+          <div id="tab-login" class="tab-pane active">
+            <form id="form-login" novalidate>
+              <div class="fg">
+                <label>Email</label>
+                <input id="login-email" type="email" placeholder="tu@email.com" autocomplete="email" required />
+              </div>
+              <div class="fg">
+                <label>Contraseña</label>
+                <input id="login-password" type="password" placeholder="••••••••" autocomplete="current-password" required />
+              </div>
+              <button type="submit" class="btn-primary w100">Entrar →</button>
+              <p id="login-error" class="msg-error sz-hidden"></p>
+            </form>
+            <div class="auth-hint">
+              💡 Admin demo: <strong>admin@sport.com</strong> / <strong>admin123</strong>
+            </div>
+          </div>
+
+          <!-- REGISTER -->
+          <div id="tab-register" class="tab-pane sz-hidden">
+            <form id="form-register" novalidate>
+              <div class="fg">
+                <label>Nombre completo</label>
+                <input id="reg-name" type="text" placeholder="Tu nombre" required />
+              </div>
+              <div class="fg">
+                <label>Email</label>
+                <input id="reg-email" type="email" placeholder="tu@email.com" autocomplete="email" required />
+              </div>
+              <div class="fg">
+                <label>Contraseña</label>
+                <input id="reg-password" type="password" placeholder="Mínimo 6 caracteres" minlength="6" required />
+              </div>
+              <div class="fg">
+                <label>Confirmar contraseña</label>
+                <input id="reg-confirm" type="password" placeholder="Repite tu contraseña" required />
+              </div>
+              <button type="submit" class="btn-primary w100">Crear Cuenta →</button>
+              <p id="register-error" class="msg-error sz-hidden"></p>
+            </form>
+            <div class="register-bonus">
+              <span>🎡</span>
+              <div>
+                <strong>¡Recibe 3 giros de ruleta!</strong>
+                <p>Con descuentos y premios al registrarte</p>
+              </div>
+            </div>
+          </div>
+        </div><!-- /auth-panel -->
+      </div>
+    </div><!-- /page-auth -->
+
+    <!-- ===== STORE PAGE ===== -->
+    <div id="page-store" class="page sz-hidden">
+      <div class="store-banner">
+        <h2>🏆 Los Mejores Productos Deportivos</h2>
+        <p>Equipamiento de élite para atletas de élite</p>
+      </div>
+      <div class="store-controls">
+        <input id="search-input" type="text" placeholder="🔍 Buscar productos..." class="search-bar" />
+        <div class="cat-filters">
+          <button class="flt active" data-cat="all">Todos</button>
+          <button class="flt" data-cat="running">🏃 Running</button>
+          <button class="flt" data-cat="gym">💪 Gym</button>
+          <button class="flt" data-cat="futbol">⚽ Fútbol</button>
+          <button class="flt" data-cat="natacion">🏊 Natación</button>
+          <button class="flt" data-cat="ciclismo">🚴 Ciclismo</button>
+          <button class="flt" data-cat="otros">🏅 Otros</button>
+        </div>
+      </div>
+      <div id="products-grid" class="products-grid"></div>
+    </div>
+
+    <!-- ===== ADMIN PAGE ===== -->
+    <div id="page-admin" class="page sz-hidden">
+      <div class="admin-wrap">
+        <h2 class="admin-title">⚙️ Panel de Administración</h2>
+
+        <!-- Upload product -->
+        <div class="admin-card">
+          <h3>➕ Subir Nuevo Producto</h3>
+          <form id="form-product" novalidate>
+            <div class="form-row">
+              <div class="fg">
+                <label>Nombre del producto</label>
+                <input id="prod-name" type="text" placeholder="Ej: Nike Air Max 2025" required />
+              </div>
+              <div class="fg">
+                <label>Categoría</label>
+                <select id="prod-category" required>
+                  <option value="">Seleccionar...</option>
+                  <option value="running">Running</option>
+                  <option value="gym">Gym</option>
+                  <option value="futbol">Fútbol</option>
+                  <option value="natacion">Natación</option>
+                  <option value="ciclismo">Ciclismo</option>
+                  <option value="otros">Otros</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="fg">
+                <label>Precio ($)</label>
+                <input id="prod-price" type="number" placeholder="99.99" min="0" step="0.01" required />
+              </div>
+              <div class="fg">
+                <label>Stock disponible</label>
+                <input id="prod-stock" type="number" placeholder="10" min="0" required />
+              </div>
+            </div>
+            <div class="fg">
+              <label>Descripción</label>
+              <textarea id="prod-desc" rows="3" placeholder="Describe el producto..."></textarea>
+            </div>
+            <div class="fg">
+              <label>Imagen del producto</label>
+              <div class="img-upload" id="img-upload">
+                <input type="file" id="prod-image" accept="image/*" class="file-input" />
+                <div id="upload-ph" class="upload-ph">
+                  <span>📸</span>
+                  <p>Click para subir imagen</p>
+                  <small>JPG, PNG hasta 5 MB</small>
+                </div>
+                <img id="img-preview" class="img-preview sz-hidden" alt="Preview" />
+              </div>
+            </div>
+            <button type="submit" class="btn-primary">📦 Publicar Producto</button>
+            <p id="prod-ok" class="msg-ok sz-hidden">✅ ¡Producto publicado correctamente!</p>
+          </form>
+        </div>
+
+        <!-- Product list -->
+        <div class="admin-card">
+          <h3>📋 Productos Publicados (<span id="prod-count">0</span>)</h3>
+          <div id="admin-prod-list"></div>
+        </div>
+
+        <!-- Users list -->
+        <div class="admin-card">
+          <h3>👥 Usuarios Registrados (<span id="user-count">0</span>)</h3>
+          <div id="admin-user-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== MODAL: RULETA ===== -->
+    <div id="modal-roulette" class="modal sz-hidden">
+      <div class="modal-box roulette-box">
+        <button class="modal-close" id="close-roulette">✕</button>
+        <h2>🎡 Ruleta de Premios</h2>
+        <p id="spins-left" class="spins-info">Giros disponibles: <strong>0</strong></p>
+        <div class="wheel-wrap">
+          <div class="wheel-arrow">▼</div>
+          <canvas id="roulette-canvas" width="360" height="360"></canvas>
+        </div>
+        <button id="btn-spin" class="btn-spin">¡ GIRAR !</button>
+        <div id="prize-result" class="prize-result sz-hidden">
+          <span id="prize-icon">🏆</span>
+          <h3 id="prize-title"></h3>
+          <code id="prize-code"></code>
+          <p>Guardado en tus cupones 🎫</p>
+        </div>
+        <div id="no-spins-msg" class="no-spins sz-hidden">
+          <p>😔 No tienes giros disponibles</p>
+          <small>¡Consigue más comprando en la tienda!</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== MODAL: CUPONES ===== -->
+    <div id="modal-coupons" class="modal sz-hidden">
+      <div class="modal-box">
+        <button class="modal-close" id="close-coupons">✕</button>
+        <h2>🎫 Mis Cupones</h2>
+        <div id="coupons-list"></div>
+      </div>
+    </div>
+
+    <!-- ===== MODAL: BIENVENIDA ===== -->
+    <div id="modal-welcome" class="modal sz-hidden">
+      <div class="modal-box welcome-box">
+        <div class="welcome-emoji">🎉</div>
+        <h2 id="welcome-name">¡Bienvenido!</h2>
+        <p>Tu cuenta fue creada exitosamente.</p>
+        <div class="welcome-bonus">
+          <span>🎡</span>
+          <div>
+            <strong>¡Recibiste 3 giros de ruleta!</strong>
+            <p>Gana descuentos y premios exclusivos</p>
+          </div>
+        </div>
+        <button id="btn-go-roulette" class="btn-primary w100">🎡 ¡Ir a la Ruleta ahora!</button>
+        <button id="btn-skip" class="btn-secondary w100">Ver tienda primero</button>
+      </div>
+    </div>
+
+    <!-- ===== TOAST ===== -->
+    <div id="toast" class="toast sz-hidden"></div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
