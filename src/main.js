@@ -26,7 +26,8 @@ const PRIZES = [
 const fmt = v => '$ ' + Math.round(v).toLocaleString('es-CO');
 
 // ── Storage ─────────────────────────────────────────────────
-const K = { users:'sz_users', products:'sz_products', session:'sz_sess' };
+const DATA_VERSION = 'v2-cop';
+const K = { users:'sz_users', products:'sz_products', session:'sz_sess', ver:'sz_ver' };
 const store = {
   get: k      => JSON.parse(localStorage.getItem(k) || 'null'),
   set: (k, v) => localStorage.setItem(k, JSON.stringify(v)),
@@ -41,6 +42,11 @@ const saveProducts= p   => store.set(K.products, p);
 function init() { seedData(); bindEvents(); checkSession(); }
 
 function seedData() {
+  // Si la versión de datos cambió, resetear productos para aplicar precios COP
+  if (store.get(K.ver) !== DATA_VERSION) {
+    store.del(K.products);
+    store.set(K.ver, DATA_VERSION);
+  }
   const users = getUsers();
   if (!users.find(u => u.email === 'admin@sport.com')) {
     users.push({ id:'admin-001', name:'Administrador', email:'admin@sport.com', password:'admin123',
