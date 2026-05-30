@@ -22,6 +22,9 @@ const PRIZES = [
   { label:'5% OFF',     icon:'🎯', color:'#607D8B', desc:'5% de descuento en tu proxima compra'  },
 ];
 
+// ── Formato moneda COP ──────────────────────────────────────
+const fmt = v => '$ ' + Math.round(v).toLocaleString('es-CO');
+
 // ── Storage ─────────────────────────────────────────────────
 const K = { users:'sz_users', products:'sz_products', session:'sz_sess' };
 const store = {
@@ -46,14 +49,14 @@ function seedData() {
   }
   if (!getProducts().length) {
     saveProducts([
-      { id:'p1', name:'Zapatillas Running Pro X',   category:'running',  price:129.99, stock:15, desc:'Suela amortiguada y transpirable para corredores exigentes.',     image:null, emoji:'👟' },
-      { id:'p2', name:'Camiseta Tecnica AeroFit',   category:'gym',      price:34.99,  stock:30, desc:'Tejido tecnico que elimina el sudor, ideal para entrenamientos.',  image:null, emoji:'👕' },
-      { id:'p3', name:'Balon de Futbol Premier',    category:'futbol',   price:49.99,  stock:20, desc:'Balon oficial de competicion talla 5. Alta durabilidad.',          image:null, emoji:'⚽' },
-      { id:'p4', name:'Gafas de Natacion Elite',    category:'natacion', price:24.99,  stock:25, desc:'Antivaho con lentes espejo y correa ajustable.',                   image:null, emoji:'🥽' },
-      { id:'p5', name:'Casco Ciclismo AeroShield',  category:'ciclismo', price:89.99,  stock:10, desc:'Certificado CE EN1078. Ventilacion optima, ligero y resistente.',  image:null, emoji:'🪖' },
-      { id:'p6', name:'Mancuernas Ajustables 30kg', category:'gym',      price:159.99, stock:8,  desc:'Set de 5 a 30 kg con sistema de ajuste rapido.',                   image:null, emoji:'🏋' },
-      { id:'p7', name:'Short Compresion Pro',        category:'running',  price:44.99,  stock:22, desc:'Bolsillos laterales y secado ultrarapido.',                       image:null, emoji:'🩳' },
-      { id:'p8', name:'Raqueta Padel Carbon X',      category:'otros',    price:199.99, stock:6,  desc:'Fibra de carbono. Maximo control y potencia.',                    image:null, emoji:'🏓' },
+      { id:'p1', name:'Zapatillas Running Pro X',   category:'running',  price:549900,  stock:15, desc:'Suela amortiguada y transpirable para corredores exigentes.',     image:null, emoji:'👟' },
+      { id:'p2', name:'Camiseta Tecnica AeroFit',   category:'gym',      price:149900,  stock:30, desc:'Tejido tecnico que elimina el sudor, ideal para entrenamientos.',  image:null, emoji:'👕' },
+      { id:'p3', name:'Balon de Futbol Premier',    category:'futbol',   price:199900,  stock:20, desc:'Balon oficial de competicion talla 5. Alta durabilidad.',          image:null, emoji:'⚽' },
+      { id:'p4', name:'Gafas de Natacion Elite',    category:'natacion', price:99900,   stock:25, desc:'Antivaho con lentes espejo y correa ajustable.',                   image:null, emoji:'🥽' },
+      { id:'p5', name:'Casco Ciclismo AeroShield',  category:'ciclismo', price:379900,  stock:10, desc:'Certificado CE EN1078. Ventilacion optima, ligero y resistente.',  image:null, emoji:'🪖' },
+      { id:'p6', name:'Mancuernas Ajustables 30kg', category:'gym',      price:679900,  stock:8,  desc:'Set de 5 a 30 kg con sistema de ajuste rapido.',                   image:null, emoji:'🏋' },
+      { id:'p7', name:'Short Compresion Pro',        category:'running',  price:189900,  stock:22, desc:'Bolsillos laterales y secado ultrarapido.',                       image:null, emoji:'🩳' },
+      { id:'p8', name:'Raqueta Padel Carbon X',      category:'otros',    price:849900,  stock:6,  desc:'Fibra de carbono. Maximo control y potencia.',                    image:null, emoji:'🏓' },
     ]);
   }
 }
@@ -156,7 +159,7 @@ function renderProducts() {
         ${p.desc?`<p class="prod-desc">${esc(p.desc)}</p>`:''}
         <div class="prod-foot">
           <div>
-            <div class="prod-price">$${p.price.toFixed(2)}</div>
+            <div class="prod-price">${fmt(p.price)}</div>
             <div class="prod-stock ${p.stock===0?'stock-out':p.stock<=5?'stock-low':''}">${p.stock===0?'✗ Agotado':p.stock<=5?`⚠ Solo ${p.stock}`:'✓ En stock'}</div>
           </div>
           <button class="btn-cart" ${p.stock===0?'disabled':''} data-id="${p.id}">${p.stock===0?'Agotado':'+ Carrito'}</button>
@@ -198,7 +201,7 @@ function renderAdminProducts() {
   list.innerHTML = products.map(p => `
     <div class="ap-row">
       <div class="ap-thumb">${p.image?`<img src="${p.image}" alt="">`:(p.emoji||'🏆')}</div>
-      <div class="ap-info"><h4>${esc(p.name)}</h4><p>${CAT_LABEL[p.category]||p.category} · $${p.price.toFixed(2)} · Stock: ${p.stock}</p></div>
+      <div class="ap-info"><h4>${esc(p.name)}</h4><p>${CAT_LABEL[p.category]||p.category} · ${fmt(p.price)} · Stock: ${p.stock}</p></div>
       <button class="btn-del" data-id="${p.id}">🗑 Eliminar</button>
     </div>
   `).join('');
